@@ -24,7 +24,6 @@ app.config["suppress_callback_exceptions"] = True
 APP_PATH = str(pathlib.Path(__file__).parent.resolve())
 df = pd.read_csv(os.path.join(APP_PATH, os.path.join("data", "TEST_MOCK_DATA.csv")))
 
-
 # ========== initialize save data =============
 
 
@@ -34,11 +33,50 @@ def init_value_setter_store():
                   "Date": "NONE",
                   "Department": "NONE",
                   "User": "111",
-                  "Type": "NONE", }
+                  "Type": "NONE",
+                  "Pass or Fail": "NONE"}
+    return state_dict
+
+
+# ========== initialize chart figs =============
+
+
+def init_chart_figs_store():
+    c_fig = px.pie(df, values="qty", names="UOM", color='UOM', color_discrete_map={'pc': 'lightcyan',
+                                                                                   'sp': 'cyan',
+                                                                                   'mp': 'royalblue',
+                                                                                   'pl': 'darkblue',
+                                                                                   'NO DATA': 'black'})
+
+    g_fig = px.bar(df["time1"])
+
+    # Initialize chart figs
+    state_dict = {"CHART_FIGURE": c_fig,
+                  "GRAPH_FIGURE": g_fig, }
+    return state_dict
+
+
+# ========== initialize temp figs =============
+
+
+def init_temp_figs_store():
+    c_fig = px.pie(df, values="qty", names="UOM", color='UOM', color_discrete_map={'pc': 'lightcyan',
+                                                                                   'sp': 'cyan',
+                                                                                   'mp': 'royalblue',
+                                                                                   'pl': 'darkblue',
+                                                                                   'NO DATA': 'black'})
+
+    g_fig = px.bar(df["time1"])
+
+    # Initialize temp figs
+    state_dict = {"CHART_FIGURE": c_fig,
+                  "GRAPH_FIGURE": g_fig, }
     return state_dict
 
 
 # ========== build tabs function =============
+
+
 def build_banner():
     return html.Div(
         id="banner",
@@ -256,7 +294,7 @@ def generate_modal():
 
 # =========== build tab two fully =================
 
-def build_quick_stats_panel(cal, dep, user_n, typ, t_rate):
+def build_quick_stats_panel(cal, dep, user_n, t_rate, p_f):
     return html.Div(
         id="quick-stats",
         className="row",
@@ -289,7 +327,7 @@ def build_quick_stats_panel(cal, dep, user_n, typ, t_rate):
                 ],
             ),
             html.Div(
-                id="possible-smileys",
+                id="possible-smileys", children=[p_f]
             ),
         ],
     )
@@ -305,7 +343,7 @@ def generate_section_banner(title):
 # ======== build top right panels =========
 
 
-def build_top_panel(stopped_interval):
+def build_top_panel(stopped_interval, c_fig):
     """
     fig.update_layout(
         legend_bgcolor=(0, 0, 0, 0),
@@ -342,12 +380,7 @@ def build_top_panel(stopped_interval):
                     generate_section_banner("Picks in a Pie"),
                     dcc.Graph(id="pie-chart",
 
-                              figure=px.pie(df, values="qty", names="UOM", color='UOM',
-                                            color_discrete_map={'pc': 'lightcyan',
-                                                                'sp': 'cyan',
-                                                                'mp': 'royalblue',
-                                                                'pl': 'darkblue',
-                                                                'NO DATA': 'black'}),
+                              figure=c_fig,
                               style={'text-align': "center", "color": "#003F98",
                                      "font-family": "Helvetica Neue 55", "opacity": "85%",
                                      "hoverinfo": "label", "textinfo": "label", }, ),
@@ -357,14 +390,9 @@ def build_top_panel(stopped_interval):
     )
 
 
-"""
-
-"""
-
-
 # ======== build out bottom chart area ==========
 
-def build_chart_panel():
+def build_chart_panel(g_fig):
     return html.Div(
         id="control-chart-container",
         className="twelve columns",
@@ -372,22 +400,13 @@ def build_chart_panel():
             generate_section_banner("Picks Over Time"),
             dcc.Graph(
                 id="bar-graph",
-                figure=px.bar(df["time1"]),
+                figure=g_fig,
             ),
         ],
     )
 
 
 # ---------------layout ------------------------------------------------------------------------------------------
-"""
-app.layout = html.Div([
-    dcc.Tabs(id='tabs-example', value='tab-1', children=[
-        dcc.Tab(label='Tab one', value='tab-1'),
-        dcc.Tab(label='Tab two', value='tab-2'),
-    ]),
-    html.Div(id='tabs-example-content')
-])
-"""
 
 app.layout = html.Div(
     id="big-app-container",
@@ -409,34 +428,23 @@ app.layout = html.Div(
         ),
         dcc.Store(id="value-setter-store", data=(init_value_setter_store())),
         dcc.Store(id="n-interval-stage", data=50),
+        dcc.Store(id="figs-store", data=(init_chart_figs_store())),
+        dcc.Store(id="figs-temp", data=(init_temp_figs_store())),
         generate_modal(),
     ],
 )
 
-# -----------callbacks-----------------------------------------------------------------------------------
-"""
-@app.callback(Output('tabs-example-content', 'children'),
-              Input('tabs-example', 'value'))
-def render_content(tab):
-    if tab == 'tab-1':
-        return html.Div([
-            html.H3('Tab content 1')
-        ])
-    elif tab == 'tab-2':
-        return html.Div([
-            html.H3('Tab content 2')
-        ])
-"""
 
+# -----------callbacks-----------------------------------------------------------------------------------
 
 # ===== tab update =========
 
 @app.callback(
     [Output("app-content", "children"), Output("interval-component", "n_intervals")],
-    [Input("app-tabs", "value"), Input("value-setter-store", "data")],
+    [Input("app-tabs", "value"), Input("value-setter-store", "data"), Input("figs-store", "data")],
     [State("n-interval-stage", "data")],
 )
-def render_tab_content(tab_switch, data, stopped_interval):
+def render_tab_content(tab_switch, data, figs, stopped_interval):
     if tab_switch == "tab1":
         return build_tab_1(), stopped_interval
 
@@ -445,15 +453,19 @@ def render_tab_content(tab_switch, data, stopped_interval):
     dep = data["Department"]
     user_n = re.sub('\D', '', data["User"])
     typ = data["Type"]
+    p_f = data["Pass or Fail"]
+
+    c_fig = figs["CHART_FIGURE"]
+    g_fig = figs["GRAPH_FIGURE"]
 
     return (
         html.Div(
             id="status-container",
             children=[
-                build_quick_stats_panel(cal, dep, user_n, typ, t_rate),
+                build_quick_stats_panel(cal, dep, user_n, t_rate, p_f),
                 html.Div(
                     id="graphs-container",
-                    children=[build_top_panel(stopped_interval), build_chart_panel()],
+                    children=[build_top_panel(stopped_interval, c_fig), build_chart_panel(g_fig)],
                 ),
             ],
         ),
@@ -473,8 +485,6 @@ def render_tab_content(tab_switch, data, stopped_interval):
 )
 def update_interval_state(tab_switch, cur_interval, disabled, cur_stage):
     if disabled:
-        print(cur_interval)
-
         return cur_interval
 
     if tab_switch == "tab1":
@@ -502,23 +512,19 @@ def update_click_output(button_click, close_click):
 
 
 @app.callback(
-    [Output("department-display", "children"), Output("operator-led", "value"), Output("date-display", "children"),
-     Output("pick-rate-display", "children"), Output("metric-rows", "children"),
-     Output("bar-graph", "figure"), Output("pie-chart", "figure")],
-    inputs=[
+    Output("figs-temp", "data"),
+    [
         Input("dept-select", "value"),
         Input("user-select", "value"),
         Input("type-pick", "value"),
         Input('my-date-picker-single', 'date')
     ],
+    [State("figs-store", "data")]
 )
-def settings_changes(department_value, user_value, type_value, date_value):
+def settings_changes(department_value, user_value, type_value, date_value, figs, ):
     df['date'] = df['date'].astype(str)
-    print(date_value)
-    print(df)
     df_df = df.loc[df["date"] == date_value]
-    udf_df = df_df.loc[df["user"] == user_value]
-    print(udf_df)
+    udf_df = df_df.loc[df["USER"] == user_value]
     listy = []
     dicty = {}
 
@@ -535,7 +541,7 @@ def settings_changes(department_value, user_value, type_value, date_value):
         new_data = udf_df.loc[df["from_zone"] == zone]
         dict_zones_total_picks[zone] = new_data.shape[0]
 
-    tudf_df = udf_df.loc[df["sku"] == type_value]
+    tudf_df = udf_df.loc[df["SKU"] == type_value]
 
     a = department_value
     b = user_value
@@ -556,40 +562,73 @@ def settings_changes(department_value, user_value, type_value, date_value):
 
     fig_bar = px.bar(udf_df["time1"])
 
-    fig_pie = px.pie(udf_df, values="qty", names="uom", color='uom',
-                     color_discrete_map={'pc': 'lightcyan',
-                                         'sp': 'cyan',
-                                         'mp': 'royalblue',
-                                         'pl': 'darkblue',
-                                         'NO DATA': 'black'})
+    pie_v = "qty"
+    pie_n = "UOM"
+    pie_c = "UOM"
+    cdm = {'pc': 'lightcyan', 'sp': 'cyan', 'mp': 'royalblue', 'pl': 'darkblue', 'NO DATA': 'black'}
 
-    return a, b, d, percent_total, zone_read_out, fig_bar, fig_pie
+    if c == "UOM":
+        pie_v = "qty"
+        pie_n = "UOM"
+        pie_c = "UOM"
+        cdm = {'pc': 'lightcyan', 'sp': 'cyan', 'mp': 'royalblue', 'pl': 'darkblue', 'NO DATA': 'black'}
+
+    elif c == "SKU":
+        pie_v = "qty"
+        pie_n = "SKU"
+        pie_c = "SKU"
+        cdm = {'INK': 'lightcyan', 'PRI': 'cyan', 'PRO': 'royalblue', 'PAP': 'darkblue', "OTH": "gray", 'NO DATA': 'black'}
+
+    elif c == "WEIGHT":
+        pie_v = "qty"
+        pie_n = "WEIGHT"
+        pie_c = "WEIGHT"
+        cdm = {1: 'lightcyan', 5: 'cyan', 10: 'royalblue', 15: 'darkblue', 25: "yellow", 40: "lightred", 70: "red", 100: "darkred", 'NO DATA': 'black'}
+
+    fig_pie = px.pie(udf_df, values=pie_v, names=pie_n, color=pie_c,
+                     color_discrete_map=cdm)
+
+    figs["CHART_FIGURE"] = fig_pie
+    figs["GRAPH_FIGURE"] = fig_bar
+
+
+    return figs
 
 
 # ====== Callbacks to update stored data via click =====
 @app.callback(
-    output=Output("value-setter-store", "data"),
-    inputs=[Input("value-setter-set-btn", "n_clicks")],
-    state=[
+    Output("value-setter-store", "data"), Output("figs-store", "data"),
+    [Input("value-setter-set-btn", "n_clicks")],
+    [
         State("value-setter-store", "data"),
+        State("figs-store", "data"),
+        State("figs-temp", "data"),
         State("my-date-picker-single", "date"),
         State("dept-select", "value"),
         State("user-select", "value"),
         State("type-pick", "value"),
     ],
 )
-def set_value_setter_store(set_btn, data, cal, dep, usr, typ):
-    print(set_btn)
+def set_value_setter_store(set_btn, data, figs, t_figs, cal, dep, usr, typ):
     if set_btn is None:
-        print("none button")
-        return data
+        return data, figs
     else:
-        print("yes button 1")
         data["Date"] = cal
         data["Department"] = dep
         data["User"] = usr
         data["Type"] = typ
-        return data
+
+        pass_or_fail = "sad.png"
+        if usr == "EAI111" or "EAI333":
+            pass_or_fail = "smile.png"
+        pass_or_fail = "PASS"
+
+        data["Pass or Fail"] = pass_or_fail
+
+        figs["CHART_FIGURE"] = (t_figs["CHART_FIGURE"])
+        figs["GRAPH_FIGURE"] = (t_figs["GRAPH_FIGURE"])
+
+        return data, figs
 
 
 @app.callback(
@@ -602,7 +641,6 @@ def set_value_setter_store(set_btn, data, cal, dep, usr, typ):
 def show_current_specs(n_clicks, store_data):
     print("yes button 2")
     if n_clicks > 0:
-        print("yes button 3")
         new_df_dict = {
             "Data Filters": [
                 "Current Date Selected",
