@@ -1,6 +1,7 @@
 import os
 import pathlib
 from datetime import date
+import re
 
 import dash_daq as daq
 import dash_table
@@ -11,7 +12,7 @@ import dash
 import dash_html_components as html
 import dash_core_components as dcc
 
-from dash.dependencies import Input, Output ,State
+from dash.dependencies import Input, Output, State
 
 app = dash.Dash(
     __name__,
@@ -23,12 +24,17 @@ app.config["suppress_callback_exceptions"] = True
 APP_PATH = str(pathlib.Path(__file__).parent.resolve())
 df = pd.read_csv(os.path.join(APP_PATH, os.path.join("data", "TEST_MOCK_DATA.csv")))
 
+
 # ========== initialize save data =============
 
 
 def init_value_setter_store():
     # Initialize store data
-    state_dict = {"test": "tessst"}
+    state_dict = {"Rate_Total": "110%",
+                  "Date": "NONE",
+                  "Department": "NONE",
+                  "User": "111",
+                  "Type": "NONE", }
     return state_dict
 
 
@@ -152,7 +158,7 @@ def build_tab_1():
                                      ),
 
                         dcc.DatePickerSingle(
-                            id='my-date-picker-single',
+                            id="my-date-picker-single",
                             min_date_allowed=date(1995, 8, 5),
                             max_date_allowed=date(2021, 3, 7),
                             initial_visible_month=date(2021, 3, 7),
@@ -250,7 +256,7 @@ def generate_modal():
 
 # =========== build tab two fully =================
 
-def build_quick_stats_panel():
+def build_quick_stats_panel(cal, dep, user_n, typ, t_rate):
     return html.Div(
         id="quick-stats",
         className="row",
@@ -261,7 +267,7 @@ def build_quick_stats_panel():
                     html.P("USER ID"),
                     daq.LEDDisplay(
                         id="operator-led",
-                        value=[],
+                        value=[user_n],
                         color="#92e0d3",
                         backgroundColor="#1e2130",
                         size=50,
@@ -271,14 +277,14 @@ def build_quick_stats_panel():
             html.Div(
                 id="card-2",
                 children=[
-                    html.P("Department"),
-                    html.H1(id="Department-display", children=[],
+                    html.P("DEPARTMENT"),
+                    html.H1(id="department-display", children=[dep],
                             style={'text-align': 'center', "color": "white", "font-family": "Helvetica Neue 55", }),
-                    html.P("Date"),
-                    html.H1(id="Date-display", children=[],
+                    html.P("DATE"),
+                    html.H1(id="date-display", children=[cal],
                             style={'text-align': 'center', "color": "white", "font-family": "Helvetica Neue 55", }),
-                    html.P("Pick Rate Percent"),
-                    html.H1(id="Pick-rate-display", children=[],
+                    html.P("PICK RATE PERCENTAGE"),
+                    html.H1(id="pick-rate-display", children=[t_rate],
                             style={'text-align': 'center', "color": "white", "font-family": "Helvetica Neue 55", }),
                 ],
             ),
@@ -408,7 +414,7 @@ app.layout = html.Div(
 )
 
 # -----------callbacks-----------------------------------------------------------------------------------
-
+"""
 @app.callback(Output('tabs-example-content', 'children'),
               Input('tabs-example', 'value'))
 def render_content(tab):
@@ -420,24 +426,31 @@ def render_content(tab):
         return html.Div([
             html.H3('Tab content 2')
         ])
-
+"""
 
 
 # ===== tab update =========
 
 @app.callback(
     [Output("app-content", "children"), Output("interval-component", "n_intervals")],
-    [Input("app-tabs", "value")],
+    [Input("app-tabs", "value"), Input("value-setter-store", "data")],
     [State("n-interval-stage", "data")],
 )
-def render_tab_content(tab_switch, stopped_interval):
+def render_tab_content(tab_switch, data, stopped_interval):
     if tab_switch == "tab1":
         return build_tab_1(), stopped_interval
+
+    t_rate = data["Rate_Total"]
+    cal = data["Date"]
+    dep = data["Department"]
+    user_n = re.sub('\D', '', data["User"])
+    typ = data["Type"]
+
     return (
         html.Div(
             id="status-container",
             children=[
-                build_quick_stats_panel(),
+                build_quick_stats_panel(cal, dep, user_n, typ, t_rate),
                 html.Div(
                     id="graphs-container",
                     children=[build_top_panel(stopped_interval), build_chart_panel()],
@@ -446,7 +459,6 @@ def render_tab_content(tab_switch, stopped_interval):
         ),
         stopped_interval,
     )
-
 
 
 # Update interval
@@ -490,13 +502,13 @@ def update_click_output(button_click, close_click):
 
 
 @app.callback(
-    [Output("Department-display", "children"), Output("operator-led", "value"), Output("Date-display", "children"),
-     Output("Pick-rate-display", "children"), Output("metric-rows", "children"),
+    [Output("department-display", "children"), Output("operator-led", "value"), Output("date-display", "children"),
+     Output("pick-rate-display", "children"), Output("metric-rows", "children"),
      Output("bar-graph", "figure"), Output("pie-chart", "figure")],
     inputs=[
         Input("dept-select", "value"),
         Input("user-select", "value"),
-        Input("type-select", "value"),
+        Input("type-pick", "value"),
         Input('my-date-picker-single', 'date')
     ],
 )
@@ -561,9 +573,9 @@ def settings_changes(department_value, user_value, type_value, date_value):
     state=[
         State("value-setter-store", "data"),
         State("my-date-picker-single", "date"),
-        State("Dept-select", "value"),
+        State("dept-select", "value"),
         State("user-select", "value"),
-        State("type-select", "value"),
+        State("type-pick", "value"),
     ],
 )
 def set_value_setter_store(set_btn, data, cal, dep, usr, typ):
