@@ -3,21 +3,36 @@ import pathlib
 from datetime import date
 import re
 
-import dash_daq as daq
 import dash_table
 import pandas as pd
 import plotly.express as px
 
 import dash
+import dash_auth
+import dash_daq as daq
 import dash_html_components as html
 import dash_core_components as dcc
-
 from dash.dependencies import Input, Output, State
+
+
+
+
+VALID_USERNAME_PASSWORD_PAIRS = {
+    "MIKE": "MANLOVE",
+    "MICHEAL": "EVANS"
+}
+
+
 
 app = dash.Dash(
     __name__,
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
 )
+auth = dash_auth.BasicAuth(
+    app,
+    VALID_USERNAME_PASSWORD_PAIRS
+)
+
 server = app.server
 app.config["suppress_callback_exceptions"] = True
 
