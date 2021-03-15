@@ -14,15 +14,12 @@ import dash_html_components as html
 import dash_core_components as dcc
 from dash.dependencies import Input, Output, State
 
-
-
-
 VALID_USERNAME_PASSWORD_PAIRS = {
     "MIKE": "MANLOVE",
-    "MICHEAL": "EVANS"
+    "MICHEAL": "EVANS",
+    "HELLO": "WORLD",
+    "ZACH": "BIGWOOD"
 }
-
-
 
 app = dash.Dash(
     __name__,
@@ -39,17 +36,19 @@ app.config["suppress_callback_exceptions"] = True
 APP_PATH = str(pathlib.Path(__file__).parent.resolve())
 df = pd.read_csv(os.path.join(APP_PATH, os.path.join("data", "TEST_MOCK_DATA.csv")))
 
+
 # ========== initialize save data =============
 
 
 def init_value_setter_store():
     # Initialize store data
-    state_dict = {"Rate_Total": "110%",
+    state_dict = {"Rate_Total": "NONE",
                   "Date": "NONE",
                   "Department": "NONE",
-                  "User": "111",
+                  "User": "0000",
                   "Type": "NONE",
-                  "Pass or Fail": "NONE"}
+                  "Pass or Fail": "assets/smile.png",
+                  }
     return state_dict
 
 
@@ -63,7 +62,12 @@ def init_chart_figs_store():
                                                                                    'pl': 'darkblue',
                                                                                    'NO DATA': 'black'})
 
-    g_fig = px.bar(df["time1"])
+    g_fig = px.bar(df,
+                   x="time1",
+                   y="qty",
+                   title="PICKS PER HOUR",
+                   color="SKU"
+                   )
 
     # Initialize chart figs
     state_dict = {"CHART_FIGURE": c_fig,
@@ -80,8 +84,12 @@ def init_temp_figs_store():
                                                                                    'mp': 'royalblue',
                                                                                    'pl': 'darkblue',
                                                                                    'NO DATA': 'black'})
-
-    g_fig = px.bar(df["time1"])
+    g_fig = px.bar(df,
+                   x="time1",
+                   y="qty",
+                   title="PICKS PER HOUR",
+                   color="SKU"
+                   )
 
     # Initialize temp figs
     state_dict = {"CHART_FIGURE": c_fig,
@@ -297,7 +305,7 @@ def generate_modal():
                         7). And much much more!
 
 
-                    """
+                            """
                             )
                         ),
                     ),
@@ -342,7 +350,9 @@ def build_quick_stats_panel(cal, dep, user_n, t_rate, p_f):
                 ],
             ),
             html.Div(
-                id="possible-smileys", children=[p_f]
+                id="possible-smileys", children=[
+                    html.Img(src=p_f)
+                ]
             ),
         ],
     )
@@ -575,37 +585,48 @@ def settings_changes(department_value, user_value, type_value, date_value, figs,
     # figure this out later
     percent_total = "110%"
 
-    fig_bar = px.bar(udf_df["time1"])
 
     pie_v = "qty"
     pie_n = "UOM"
     pie_c = "UOM"
     cdm = {'pc': 'lightcyan', 'sp': 'cyan', 'mp': 'royalblue', 'pl': 'darkblue', 'NO DATA': 'black'}
+    grh_c = "UOM"
 
     if c == "UOM":
         pie_v = "qty"
         pie_n = "UOM"
         pie_c = "UOM"
+        grh_c = "UOM"
         cdm = {'pc': 'lightcyan', 'sp': 'cyan', 'mp': 'royalblue', 'pl': 'darkblue', 'NO DATA': 'black'}
 
     elif c == "SKU":
         pie_v = "qty"
         pie_n = "SKU"
         pie_c = "SKU"
-        cdm = {'INK': 'lightcyan', 'PRI': 'cyan', 'PRO': 'royalblue', 'PAP': 'darkblue', "OTH": "gray", 'NO DATA': 'black'}
+        grh_c = "SKU"
+        cdm = {'INK': 'lightcyan', 'PRI': 'cyan', 'PRO': 'royalblue', 'PAP': 'darkblue', "OTH": "gray",
+               'NO DATA': 'black'}
 
     elif c == "WEIGHT":
         pie_v = "qty"
         pie_n = "WEIGHT"
         pie_c = "WEIGHT"
-        cdm = {1: 'lightcyan', 5: 'cyan', 10: 'royalblue', 15: 'darkblue', 25: "yellow", 40: "lightred", 70: "red", 100: "darkred", 'NO DATA': 'black'}
+        grh_c = "WEIGHT"
+        cdm = {1: 'lightcyan', 5: 'cyan', 10: 'royalblue', 15: 'darkblue', 25: "yellow", 40: "lightred", 70: "red",
+               100: "darkred", 'NO DATA': 'black'}
+
+    fig_bar = px.bar(udf_df,
+                   x="time1",
+                   y="qty",
+                   title="PICKS PER HOUR",
+                   color=grh_c
+                   )
 
     fig_pie = px.pie(udf_df, values=pie_v, names=pie_n, color=pie_c,
                      color_discrete_map=cdm)
 
     figs["CHART_FIGURE"] = fig_pie
     figs["GRAPH_FIGURE"] = fig_bar
-
 
     return figs
 
@@ -633,11 +654,10 @@ def set_value_setter_store(set_btn, data, figs, t_figs, cal, dep, usr, typ):
         data["User"] = usr
         data["Type"] = typ
 
-        pass_or_fail = "sad.png"
+        pass_or_fail = "assets/sad.png"
         if usr == "EAI111" or "EAI333":
-            pass_or_fail = "smile.png"
-        pass_or_fail = "PASS"
-
+            pass_or_fail = "assets/smile.png"
+        print(pass_or_fail)
         data["Pass or Fail"] = pass_or_fail
 
         figs["CHART_FIGURE"] = (t_figs["CHART_FIGURE"])
