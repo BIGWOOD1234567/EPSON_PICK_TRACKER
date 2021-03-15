@@ -1,1 +1,1 @@
-web: gunicorn app:server
+web: gunicorn EPSON_PICK_TRACKER:server
